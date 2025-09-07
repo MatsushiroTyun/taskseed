@@ -3,10 +3,50 @@ import { Construct } from "constructs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as path from "path";
 
 export class TaskseedStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    //s3リソースの定義
+    const destinationBucket = new s3.Bucket(this, "FrontendBucket", {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    //CloudFrontディストリビューションの定義
+    const distribution = new cloudfront.Distribution(
+      this,
+      "WebsiteDistribution",
+      {
+        defaultRootObject: "index.html",
+        defaultBehavior: {
+          origin:
+            origins.S3BucketOrigin.withOriginAccessControl(destinationBucket),
+        },
+      }
+    );
+
+    //S3デプロイの定義
+    const siteAssetPath = path.resolve(
+      __dirname,
+      "..",
+      "..",
+      "frontend",
+      "out"
+    );
+    new s3deploy.BucketDeployment(this, "DeployWebsite", {
+      sources: [s3deploy.Source.asset(siteAssetPath)],
+      destinationBucket,
+      distribution,
+      distributionPaths: ["/*"],
+    });
 
     //DynamoDBリソースの定義
     const preMemoTable = new dynamodb.Table(this, "preMemo", {
@@ -260,5 +300,15 @@ export class TaskseedStack extends cdk.Stack {
       "DELETE",
       new apigateway.LambdaIntegration(colorFunction)
     );
+
+    // Outputs
+    new cdk.CfnOutput(this, "SiteURL", {
+      value: `https://${distribution.domainName}`,
+      description: "CloudFront URL for the frontend",
+    });
+    new cdk.CfnOutput(this, "ApiBaseUrl", {
+      value: api.url,
+      description: "Invoke URL for API Gateway",
+    });
   }
 }
