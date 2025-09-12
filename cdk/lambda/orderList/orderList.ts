@@ -2,6 +2,15 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+};
+
+const headers = {
+  "Content-Type": "application/json",
+  ...corsHeaders,
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -26,6 +35,7 @@ export const handler = async (
     const result = await get(listKey);
     return {
       statusCode: 200,
+      headers: headers,
       body: JSON.stringify(result.Items),
     };
   } else {

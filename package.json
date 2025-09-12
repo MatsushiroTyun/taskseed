@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "aws-amplify": "^6.15.6"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.2"
+  }
+}

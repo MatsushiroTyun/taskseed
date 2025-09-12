@@ -8,6 +8,28 @@ import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as path from "path";
+import dotenv from "dotenv";
+
+dotenv.config(); //env読み込み
+
+const CORS_ALLOWED = process.env.CORS_ALLOWED_ORIGINS!;
+const CORS_ORIGIN_PROD = process.env.CORS_ORIGIN_PROD!;
+const commonEnv = {
+  CORS_ALLOWED_ORIGINS: CORS_ALLOWED,
+  CORS_ORIGIN_PROD: CORS_ORIGIN_PROD,
+};
+const corsOptions: apigateway.CorsOptions = {
+  allowOrigins: [process.env.CORS_ORIGIN_LOCAL!, process.env.CORS_ORIGIN_PROD!],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "X-Amz-Date",
+    "X-Api-Key",
+    "X-Amz-Security-Token",
+  ],
+};
 
 export class TaskseedStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -137,6 +159,7 @@ export class TaskseedStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda/preMemo"),
       handler: "preMemo.handler",
       environment: {
+        ...commonEnv,
         TABLE_NAME: preMemoTable.tableName,
       },
     });
@@ -147,6 +170,7 @@ export class TaskseedStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda"),
       handler: "task.handler",
       environment: {
+        ...commonEnv,
         TABLE_NAME: taskTable.tableName,
         CHILD_TABLE_NAME: childTaskTable.tableName,
         ORDER_TABLE_NAME: orderListTable.tableName,
@@ -160,6 +184,7 @@ export class TaskseedStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda"),
       handler: "childTask.handler",
       environment: {
+        ...commonEnv,
         TABLE_NAME: childTaskTable.tableName,
         ORDER_TABLE_NAME: orderListTable.tableName,
       },
@@ -172,6 +197,7 @@ export class TaskseedStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda"),
       handler: "orderList.handler",
       environment: {
+        ...commonEnv,
         TABLE_NAME: orderListTable.tableName,
       },
     });
@@ -182,6 +208,7 @@ export class TaskseedStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda"),
       handler: "tag.handler",
       environment: {
+        ...commonEnv,
         TABLE_NAME: tagTable.tableName,
       },
     });
@@ -192,6 +219,7 @@ export class TaskseedStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda"),
       handler: "color.handler",
       environment: {
+        ...commonEnv,
         TABLE_NAME: colorTable.tableName,
       },
     });
@@ -199,11 +227,31 @@ export class TaskseedStack extends cdk.Stack {
 
     // API Gatewayリソースの定義
     const api = new apigateway.RestApi(this, "TaskseedApi", {
-      restApiName: "Taskseed Service",
+      restApiName: "TaskseedService",
       description: "This service serves taskseed.",
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowOrigins: corsOptions.allowOrigins,
+        allowMethods: corsOptions.allowMethods,
+        allowHeaders: corsOptions.allowHeaders,
+      },
+    });
+
+    api.addGatewayResponse("Default4XXWithCORS", {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Methods": "'GET,POST,PUT,DELETE,OPTIONS'",
+        "Access-Control-Allow-Headers":
+          "'Content-Type,Authorization,X-Requested-With,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+      },
+    });
+    api.addGatewayResponse("Default5XXWithCORS", {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Methods": "'GET,POST,PUT,DELETE,OPTIONS'",
+        "Access-Control-Allow-Headers":
+          "'Content-Type,Authorization,X-Requested-With,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
       },
     });
 

@@ -9,6 +9,15 @@ import {
 import { randomUUID } from "crypto";
 import { POSTTagItem, PUTTagItem } from "../types/types";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+};
+
+const headers = {
+  "Content-Type": "application/json",
+  ...corsHeaders,
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -61,6 +70,7 @@ export const handler = async (
     const result = await getList();
     return {
       statusCode: 200,
+      headers: headers,
       body: JSON.stringify(result.Items),
     };
   } else if (event.httpMethod === "POST") {
@@ -75,6 +85,7 @@ export const handler = async (
     const result = await post(data);
     return {
       statusCode: 201,
+      headers: headers,
       body: JSON.stringify(result),
     };
   } else if (event.httpMethod === "PUT") {
@@ -89,6 +100,7 @@ export const handler = async (
     const result = await put(data);
     return {
       statusCode: 200,
+      headers: headers,
       body: JSON.stringify(result),
     };
   } else if (event.httpMethod === "DELETE") {
@@ -100,6 +112,7 @@ export const handler = async (
     const result = await del(id);
     return {
       statusCode: 200,
+      headers: headers,
       body: JSON.stringify(result),
     };
   } else {
